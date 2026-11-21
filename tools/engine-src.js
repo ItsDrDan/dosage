@@ -334,6 +334,13 @@ CASES.push(
 for(const [id,path] of [['mateo','n-inject'],['child','n-peds'],['heat','n-iv'],['units','n-inject'],['recon','n-inject'],['bsa','n-peds'],['titrate','n-crit']])CASES.find(c=>c.id===id).path=path;
 for(const id of ['mateo','child','heat','dental'])CASES.find(c=>c.id===id).start=true;
 PATHS.splice(0,PATHS.length,['core','Start here'],['n-oral','Oral medicines','Nursing'],['n-inject','Injections and units','Nursing'],['n-iv','IV fluids and timing','Nursing'],['n-peds','Pediatrics','Nursing'],['n-crit','Critical care','Nursing'],['n-care','Intake, output, and feeding','Nursing'],['dental','Dental hygiene','Other programs'],['rt','Respiratory therapy','Other programs'],['rad','Radiologic technology','Other programs'],['ems','Paramedic','Other programs']);
+CASES.push({id:'epi',path:'dental',title:'Dental: epinephrine in a cartridge',story:'Epinephrine is a real drug often added to dental anesthetic. The limit in this case is made up for math practice.',build(){const lim=pick([[.04,'0.040'],[.1,'0.100'],[.2,'0.200']]),mg=.01*1.7,n=Math.floor(lim[0]/mg+1e-9);return[
+  mcStep('ratio','A cartridge is labeled epinephrine <b>1:100,000</b>, which means 1 g in 100,000 mL. What is the strength?',[['0.01 mg/mL',1,''],['0.1 mg/mL',0,'That is the strength of a 1:10,000 ratio.'],['1 mg/mL',0,'That is the strength of a 1:1,000 ratio.'],['100 mg/mL',0,'The 1 g is spread through 100,000 mL, so the strength is very small.']],['1 g = 1000 mg.','Divide 1000 mg by 100,000 mL.'],'1000 mg ÷ 100,000 mL = <b>0.01 mg/mL</b>'),
+  nm('ratio','One cartridge holds <b>1.70 mL</b>. How many <b>mg</b> of epinephrine is that?',mg,'mg',[slip(1.7,'decimal'),slip(.17,'decimal')],['Multiply mL by mg/mL.'],res(line('1.70 mL',fr('0.01 mg','1 mL')),'0.0170 mg'),3,'routine'),
+  nm('ratio','Write that amount in <b>mcg</b>.',17,'mcg',[slip(.000017,'mcg')],['1 mg = 1000 mcg.'],res(line('0.0170 mg',fr('1000 mcg','1 mg')),'17.0 mcg'),3,'routine'),
+  wh('ratio',`The made-up limit for this patient is <b>${lim[1]} mg</b> of epinephrine. How many <b>full cartridges</b> stay at or under it?`,n,n,'cartridge','cartridges',[slip(n+1,'down')],['Limit ÷ mg per cartridge.','Round <b>down</b>: rounding up would pass the limit.'],`${lim[1]} mg ÷ 0.0170 mg = ${f(lim[0]/mg,3)}. Round down to <b>${n} full cartridge${n===1?'':'s'}</b>.`)]}});
+/* Textbook links can open one skill: ?mode=percent&focus=solutions or dilution. */
+const FOCUS={solutions:[P.grams,P.volume],dilution:[P.dilute,P.water,P.stock]};
 const caseStep=(id,i)=>()=>CASES.find(c=>c.id===id).build()[i];
 const mix=L=>{let r=Math.random()*L.reduce((s,x)=>s+x[1],0);for(const [g,w] of L)if((r-=w)<0)return g();return L[0][0]()};
 const senseAny=()=>SENSE[pick(Object.keys(SENSE))]();

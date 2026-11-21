@@ -65,7 +65,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
  <h1><span class="a">Dose</span> <span class="b">Right!</span></h1>
  <p class="subtitle">Read the order, cancel the units, draw up the dose, and set the pump.</p>
 </div><div class="logo" aria-hidden="true"><img src="assets/logo.webp" alt="" width="112" height="112" style="width:100%;height:auto;display:block"></div></header>
-<p class="note">Math practice only. Drug names, orders and limits are made up. In clinical work, always follow the order and facility policy.</p>
+<p class="note">Math practice only. Orders and limits are made up, and so are most drug names. In clinical work, always follow the order and facility policy.</p>
 <details class="howto"><summary>📘 How to use this game</summary><ul><li><b>Pick a mode</b> below.</li><li>Solve it, then press <b>Check Answer</b>.</li><li><b>💡 Hint</b> gives the next step.</li><li>Each mode mixes in label reading, estimating, safe charting, and finding mistakes.</li></ul></details>
 <nav class="modes" id="modes" aria-label="Choose a mode"></nav>
 <div class="main">
@@ -90,7 +90,7 @@ const REFERENCE=[['Weight','1 kg = 2.2046 lb'],['Metric','1 g = 1000 mg · 1 L =
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let ui={};try{ui=JSON.parse(localStorage.getItem(GAME_KEY+'-ui')||'{}')}catch(e){}
 const saveUI=()=>{try{localStorage.setItem(GAME_KEY+'-ui',JSON.stringify(ui))}catch(e){}};
-const params=new URLSearchParams(location.search),linked=params.get('mode');
+const params=new URLSearchParams(location.search),linked=params.get('mode'),focus=params.get('focus');if(PATHS.some(x=>x[0]===params.get('path')))ui.path=params.get('path');
 const state={mode:MODES.some(m=>m.id===linked)?linked:MODES.some(m=>m.id===ui.mode)?ui.mode:'setup',q:null,sel:null,done:false,assisted:false,tries:0,hintN:0,correct:0,streak:0,assist:0,chain:[],val:0,seen:new Set(),queue:[],kase:null,part:0,quiz:null,slip:''};
 function toView(el){window.scrollTo({top:Math.max(0,el.getBoundingClientRect().top+scrollY-8),behavior:'smooth'})}
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2600)}
@@ -112,7 +112,7 @@ const fixLabel=()=>{const n=missTopics().length;return`🔧 Fix My Mistakes (${n
 function startFix(){const t=missTopics();if(!t.length)return quizMenu();const q=[];for(let i=0;i<5;i++)q.push(TOPIC_GEN[t[i%t.length]]());state.quiz=null;state.kase={id:'fix',fix:true,title:'Fix My Mistakes',story:'These questions come from topics you missed. Hints are on. A clean answer clears a miss.'};state.queue=q;state.total=q.length;state.part=0;btns(true);next();toView($('practice'))}
 function quizMenu(){btns(false);clearFb();const fix=missTopics().length;$('qArea').innerHTML=`<p class="prompt">10 mixed questions. One try each, no hints.</p><button class="btn check" id="goQuiz" style="width:100%">Start Skill Check</button>${fix?`<button class="btn show" id="goFix" style="width:100%;margin-top:8px">${fixLabel()}</button>`:''}`;$('goQuiz').onclick=()=>{state.quiz={i:0,right:0,miss:{},items:shuf(QUIZ_PLAN).map(g=>g())};btns(true);next();toView($('practice'))};if(fix)$('goFix').onclick=startFix}
 function clearFb(){$('hintBox').className='hintbox';fb('','')}
-function pickQ(){if(state.quiz)return state.quiz.items[state.quiz.i];if(state.kase){state.part++;return state.queue.shift()}return MODE_GEN[state.mode]()}
+function pickQ(){if(state.quiz)return state.quiz.items[state.quiz.i];if(state.kase){state.part++;return state.queue.shift()}if(state.mode==='percent'&&FOCUS[focus])return pick(FOCUS[focus])();return MODE_GEN[state.mode]()}
 function next(){if(state.kase&&!state.queue.length)return caseDone();if(state.quiz&&state.quiz.i>=state.quiz.items.length)return quizDone();
  const q=pickQ();Object.assign(state,{q,sel:null,done:false,assisted:false,tries:0,hintN:0,chain:[],seen:new Set(),slip:''});clearFb();btns(true);const c=$('checkBtn');c.textContent='Check Answer';c.onclick=check;$('hintBtn').disabled=!!state.quiz;$('showBtn').disabled=!!state.quiz;$('hintBtn').classList.toggle('hidden',!!state.quiz);$('showBtn').classList.toggle('hidden',!!state.quiz);
  let h='';if(state.kase)h+=(state.part===1?`<div class="case">${state.kase.story}</div>`:'')+`<div class="step">Step ${state.part} of ${state.total}</div>`;if(state.quiz)h+=`<div class="step">Question ${state.quiz.i+1} of ${state.quiz.items.length}</div>`;h+=`<p class="prompt">${q.prompt}</p>${q.panel||''}`;
