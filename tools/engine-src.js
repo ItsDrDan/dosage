@@ -41,6 +41,15 @@ function gradeNum(q,raw){const v=CP.parseValue(raw);if(!String(raw).trim())retur
 function gradeSet(q,v){if(Math.abs(v-q.answer)<q.step/2)return{kind:'right',ok:true};
  for(const s of q.slips||[])if(Math.abs(v-s.v)<q.step/2)return{kind:'slip',code:s.code,msg:SLIPS[s.code][1]};
  const pct=Math.round(Math.abs(v-q.answer)/q.answer*100);return{kind:'wrong',msg:`${v<q.answer?'That is too little':'That is too much'}${pct>=1?`, off by about ${pct}%`:''}. Recheck your setup, then adjust.`}}
+/* Skill Check allows one try, so a miss is explained as a review, never as a next step. */
+function quizMsg(q,r){const see='Compare your work with the solution below.';
+ if(r.kind==='round')return`Your math was right, but this answer needed rounding to the nearest whole ${q.wholeName||'number'}. ${see}`;
+ if(r.kind==='sf')return`Your value was right, but this answer needed <b>${q.sf}</b> significant figures. ${see}`;
+ if(q.type==='setup'){if(r.code==='extra')return`One factor did not belong in this setup. ${see}`;if(r.code==='flip')return`A factor was upside down, so its unit did not cancel. ${see}`;if(r.kind==='open')return`Not all of the units canceled to give the unit asked for. ${see}`;return`The units worked, but the value did not. ${see}`}
+ if(r.kind==='slip')return r.msg;
+ if(r.kind==='wrong'&&(q.type==='syringe'||q.type==='pump'))return r.msg.replace('Recheck your setup, then adjust.',see);
+ if(r.kind==='wrong'&&q.type==='num')return`That is not the correct value. ${see}`;
+ return r.msg}
 /* Factor Builder: the chain must leave exactly the wanted units and give the right value. */
 function unitsOf(q,chain){const m={},add=(u,k)=>{if(u)m[u]=(m[u]||0)+k};add(q.start.nu,1);add(q.start.du,-1);for(const c of chain){const t=q.tiles.find(x=>x.id===c.id),up=c.flip?-1:1;add(t.nu,up);add(t.du,-up)}for(const k in m)if(!m[k])delete m[k];return m}
 function valueOf(q,chain){let v=q.start.v;for(const c of chain){const t=q.tiles.find(x=>x.id===c.id);v*=c.flip?t.dv/t.nv:t.nv/t.dv}return v}

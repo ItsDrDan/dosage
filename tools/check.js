@@ -3,8 +3,14 @@ const fs=require('fs'),p=require('path'),vm=require('vm');
 const ctx={console,Math,Number,String,Object,Array,JSON,Set};ctx.globalThis=ctx;ctx.window=ctx;vm.createContext(ctx);
 const parse=[p.join(__dirname,'..','..','games','brand','chemparse.v2.js')];vm.runInContext(fs.readFileSync(parse[0],'utf8'),ctx);
 if(!ctx.ChemParse&&ctx.window.ChemParse)ctx.ChemParse=ctx.window.ChemParse;
-vm.runInContext(fs.readFileSync(p.join(__dirname,'engine-src.js'),'utf8')+';globalThis.E={GEN_SETUP,syringeQ,W,IV,P,CASES,QUIZ_PLAN,TOPICS,SLIPS,gradeNum,gradeSet,gradeSetup,solution,valueOf,isTie,LB};',ctx);
-const {GEN_SETUP,syringeQ,W,IV,P,CASES,QUIZ_PLAN,TOPICS,SLIPS,gradeNum,gradeSet,gradeSetup,solution,isTie}=ctx.E,CP=ctx.ChemParse;
+vm.runInContext(fs.readFileSync(p.join(__dirname,'engine-src.js'),'utf8')+';globalThis.E={GEN_SETUP,syringeQ,W,IV,P,CASES,QUIZ_PLAN,TOPICS,SLIPS,gradeNum,gradeSet,gradeSetup,solution,valueOf,isTie,LB,quizMsg};',ctx);
+const {GEN_SETUP,syringeQ,W,IV,P,CASES,QUIZ_PLAN,TOPICS,SLIPS,gradeNum,gradeSet,gradeSetup,solution,isTie,quizMsg}=ctx.E,CP=ctx.ChemParse;
+const RETRY=/\bhint\b|\btap\b|adjust|remove it|now round|try again|recheck/i;
+function checkQuizWords(q,k){const rs=[];
+ if(q.type==='num'){rs.push(gradeNum(q,String(q.answer*7.3)));for(const s of q.slips)rs.push(gradeNum(q,String(s.v)));rs.push(q.whole?gradeNum(q,String(q.answer+.25)):gradeNum(q,q.answer.toPrecision(q.sf+1)))}
+ if(q.type==='syringe'||q.type==='pump')rs.push(gradeSet(q,q.answer>q.step?q.answer-q.step:q.answer+q.step));
+ if(q.type==='setup'){const sol=solution(q),off=q.tiles.find(t=>t.off);rs.push(gradeSetup(q,[...sol,{id:off.id,flip:false}]),gradeSetup(q,sol.slice(1)),gradeSetup(q,sol.map(c=>({...c,flip:!c.flip}))))}
+ for(const r of rs)if(!r.ok)ok(!RETRY.test(quizMsg(q,r)),k+':quiz retry wording',quizMsg(q,r))}
 let n=0;const bad={},fail=(k,x)=>{bad[k]=bad[k]||{count:0,x};bad[k].count++},ok=(c,k,x)=>{n++;if(!c)fail(k,x)};
 const REAL=/\b(acetaminophen|ibuprofen|amoxicillin|morphine|insulin|heparin|albuterol|lidocaine|fentanyl)\b/i;
 function common(q,k){ok(q.prompt&&q.why&&q.hints&&q.hints.length,k+':text',q.prompt);ok(TOPICS[q.topic],k+':topic',q.topic);ok(!/undefined|NaN|null/.test(q.prompt+q.why+q.hints.join('')),k+':bad text',q.prompt+q.why);ok(!REAL.test(q.prompt),k+':real drug',q.prompt);for(const s of q.slips||[])ok(SLIPS[s.code],k+':slip code',s.code)}
@@ -16,7 +22,7 @@ function checkQ(q,k){common(q,k);
  if(q.type==='pump'){ok(q.answer===Math.round(q.answer)&&q.answer>0&&q.answer<=q.max&&q.answer%5===0,k+':pump range',q.answer);ok(Math.abs(q.vol/q.answer-q.vol/q.answer)<1e-9&&gradeSet(q,q.answer).ok,k+':pump',q)}
  if(q.type==='mc'){ok(q.options.filter(o=>o.ok).length===1,k+':one right',q.prompt);ok(new Set(q.options.map(o=>o.t)).size===q.options.length,k+':dup',q.prompt);ok(q.options.filter(o=>!o.ok).every(o=>o.w),k+':wrong reason',q.prompt)}}
 const R=Number(process.argv[2]||4000);
-for(let i=0;i<R;i++){GEN_SETUP.forEach((g,j)=>checkQ(g(),'setup'+j));checkQ(syringeQ(),'syringe');for(const[o,l]of[[W,'W'],[IV,'IV'],[P,'P']])for(const k of Object.keys(o))checkQ(o[k](),l+'.'+k);QUIZ_PLAN.forEach((g,j)=>checkQ(g(),'quiz'+j));for(const c of CASES){const parts=c.build();ok(parts.length>=3,c.id+':parts',parts.length);parts.forEach((q,j)=>checkQ(q,c.id+j))}}
+for(let i=0;i<R;i++){GEN_SETUP.forEach((g,j)=>checkQ(g(),'setup'+j));checkQ(syringeQ(),'syringe');for(const[o,l]of[[W,'W'],[IV,'IV'],[P,'P']])for(const k of Object.keys(o))checkQ(o[k](),l+'.'+k);QUIZ_PLAN.forEach((g,j)=>{const q=g();checkQ(q,'quiz'+j);checkQuizWords(q,'quiz'+j)});for(const c of CASES){const parts=c.build();ok(parts.length>=3,c.id+':parts',parts.length);parts.forEach((q,j)=>checkQ(q,c.id+j))}}
 /* Independent recomputation of the book's worked examples */
 const near=(a,b,t=.005)=>Math.abs(a-b)<=Math.abs(b)*t;
 ok(near(.2*1000*5/125,8),'book 1.4.4 ex3');ok(near(154/2.2046*4*3,838.2,.001),'book 1.4.4 ex5 part1');ok(near(15000/(154/2.2046*4*3),17.9),'book 1.4.4 ex5 part2');ok(near(.9*1000/100,9),'0.90% in 1 L');

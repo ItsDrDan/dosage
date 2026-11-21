@@ -123,6 +123,15 @@ function gradeNum(q,raw){const v=CP.parseValue(raw);if(!String(raw).trim())retur
 function gradeSet(q,v){if(Math.abs(v-q.answer)<q.step/2)return{kind:'right',ok:true};
  for(const s of q.slips||[])if(Math.abs(v-s.v)<q.step/2)return{kind:'slip',code:s.code,msg:SLIPS[s.code][1]};
  const pct=Math.round(Math.abs(v-q.answer)/q.answer*100);return{kind:'wrong',msg:`${v<q.answer?'That is too little':'That is too much'}${pct>=1?`, off by about ${pct}%`:''}. Recheck your setup, then adjust.`}}
+/* Skill Check allows one try, so a miss is explained as a review, never as a next step. */
+function quizMsg(q,r){const see='Compare your work with the solution below.';
+ if(r.kind==='round')return`Your math was right, but this answer needed rounding to the nearest whole ${q.wholeName||'number'}. ${see}`;
+ if(r.kind==='sf')return`Your value was right, but this answer needed <b>${q.sf}</b> significant figures. ${see}`;
+ if(q.type==='setup'){if(r.code==='extra')return`One factor did not belong in this setup. ${see}`;if(r.code==='flip')return`A factor was upside down, so its unit did not cancel. ${see}`;if(r.kind==='open')return`Not all of the units canceled to give the unit asked for. ${see}`;return`The units worked, but the value did not. ${see}`}
+ if(r.kind==='slip')return r.msg;
+ if(r.kind==='wrong'&&(q.type==='syringe'||q.type==='pump'))return r.msg.replace('Recheck your setup, then adjust.',see);
+ if(r.kind==='wrong'&&q.type==='num')return`That is not the correct value. ${see}`;
+ return r.msg}
 /* Factor Builder: the chain must leave exactly the wanted units and give the right value. */
 function unitsOf(q,chain){const m={},add=(u,k)=>{if(u)m[u]=(m[u]||0)+k};add(q.start.nu,1);add(q.start.du,-1);for(const c of chain){const t=q.tiles.find(x=>x.id===c.id),up=c.flip?-1:1;add(t.nu,up);add(t.du,-up)}for(const k in m)if(!m[k])delete m[k];return m}
 function valueOf(q,chain){let v=q.start.v;for(const c of chain){const t=q.tiles.find(x=>x.id===c.id);v*=c.flip?t.dv/t.nv:t.nv/t.dv}return v}
@@ -293,7 +302,7 @@ function check(){if(state.done)return;const q=state.q;let r;
  if(q.type==='num')r=gradeNum(q,$('numIn').value);else if(q.type==='setup')r=gradeSetup(q,state.chain);else if(q.type==='syringe'||q.type==='pump'){if(!state.val)return fb('bad',q.type==='pump'?'Set the pump first.':'Draw up the dose first.');r=gradeSet(q,state.val)}
  else{if(q.sim?.need&&!q.sim.need.every(v=>state.seen.has(v)))return fb('bad',`Use the pump first: set it to <b>${q.sim.need[0]}</b>, then <b>${q.sim.need[1]} mL/h</b>.`);if(state.sel==null)return fb('bad','Choose an answer first.');const o=q.options[state.sel];r=o.ok?{kind:'right',ok:true}:{kind:'wrong',msg:o.w};if(!o.ok)$('qArea').querySelector(`.opt[data-i="${state.sel}"]`).classList.add('wrong')}
  if(r.kind==='empty'||r.kind==='nan')return fb('bad',r.msg);
- if(r.ok)return finish(false);if(state.quiz){state.tries=1;state.slip=r.code||'';return finish(false,true,r.msg)}firstMiss(r.code);fb('bad','🔎 '+r.msg)}
+ if(r.ok)return finish(false);if(state.quiz){state.tries=1;state.slip=r.code||'';return finish(false,true,quizMsg(q,r))}firstMiss(r.code);fb('bad','🔎 '+r.msg)}
 function solutionShow(){const q=state.q;if(q.type==='setup'){state.chain=solution(q);}if(q.type==='syringe'){state.val=q.answer;$('sl').value=q.answer;$('rd').textContent=q.show+' mL';drawSyringe()}if(q.type==='pump')state.setPump(q.answer);if(q.type==='num')$('numIn').value=q.show;$('qArea').querySelectorAll('.opt').forEach((b,i)=>{if(q.options[i].ok)b.classList.add('right')})}
 function reasons(q){if(q.type!=='mc')return'';const w=q.options.filter(o=>!o.ok&&o.w);return w.length?`<details style="margin-top:6px"><summary style="font-weight:800;cursor:pointer;min-height:32px">Why the other choices are wrong</summary><ul style="margin:4px 0;padding-left:20px">${w.map(o=>`<li><b>${esc(o.t)}:</b> ${o.w}</li>`).join('')}</ul></details>`:''}
 function finish(revealed,quizMiss,msg){const q=state.q;state.done=true;if(revealed||quizMiss)solutionShow();if(q.type==='setup')renderChain();$('qArea').querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(q.options[i].ok)b.classList.add('right')});['sl','minus','plus','numIn'].forEach(id=>{if($(id))$(id).disabled=true});
