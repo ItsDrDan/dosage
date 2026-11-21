@@ -2,7 +2,7 @@
 
 Dosage calculation practice for CHEM 3A, built on textbook Sections 1.4.4, 1.4.5, 11.3 and 11.4.
 
-Current version: 1.4
+Current version: 1.4.1
 
 Play: https://itsdrdan.github.io/dosage/
 
